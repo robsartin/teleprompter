@@ -1,0 +1,7 @@
+{
+  "package_id": "com.teleprompter.app",
+  "edition": "202601",
+  "name": "Teleprompter",
+  "version": "0.1.0",
+  "entrypoint": "index.html"
+}

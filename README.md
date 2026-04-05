@@ -1,25 +1,32 @@
 # Teleprompter
 
-A terminal-based teleprompter built with Python and [Textual](https://textual.textualize.io/).
+A teleprompter app for [Even Realities](https://evenrealities.com/) smart glasses, built with TypeScript and the Even Hub SDK.
 
 ## Setup
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -e ".[dev]"
+npm install
 ```
 
-## Run
+## Run (browser simulator)
 
 ```bash
-teleprompter
+npm run dev
 ```
+
+Open http://localhost:5173 — press **Space** to start/stop scrolling.
 
 ## Test
 
 ```bash
-pytest
+npm test
+```
+
+## Deploy to glasses
+
+```bash
+npm run build
+npx @evenrealities/evenhub-cli pack app.json ./dist
 ```
 
 ## Development
