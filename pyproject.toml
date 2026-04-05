@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "teleprompter"
 version = "0.1.0"
 description = "A terminal-based teleprompter application"
-requires-python = ">=3.12"
+requires-python = ">=3.9"
 dependencies = [
     "textual>=0.79.0",
 ]

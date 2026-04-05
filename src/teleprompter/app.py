@@ -5,14 +5,7 @@ from textual.widgets import Header, Footer, Static
 from textual.containers import VerticalScroll
 
 
-SAMPLE_TEXT = """\
-Welcome to Teleprompter.
-
-This is a simple terminal-based teleprompter. Load your script and it will \
-scroll smoothly so you can read naturally while presenting.
-
-Use the controls to adjust speed, pause, or restart.
-"""
+SAMPLE_TEXT = "Hello, world."
 
 
 class ScriptDisplay(Static):
