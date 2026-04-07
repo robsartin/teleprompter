@@ -148,6 +148,10 @@ function glassesStatusText(): string {
     : `⏸ ${state.speedWpm} WPM | ${elapsed} / -${remaining}`;
 }
 
+function glassesContent(): string {
+  return visibleText(state) + "\n\n" + glassesStatusText();
+}
+
 // --- Even Hub glasses UI ---
 async function initGlasses() {
   try {
@@ -160,31 +164,19 @@ async function initGlasses() {
     // Sync settings with glasses localStorage
     await initGlassesStorage(bridge);
 
-    // Create two text containers: script (top) and status bar (bottom)
-    const statusHeight = 24;
-    const scriptHeight = DISPLAY_HEIGHT - statusHeight;
+    // Create a single text container — append status to script text
     const result = await bridge.createStartUpPageContainer({
-      containerTotalNum: 2,
+      containerTotalNum: 1,
       textObject: [
         {
           xPosition: 0,
           yPosition: 0,
           width: DISPLAY_WIDTH,
-          height: scriptHeight,
+          height: DISPLAY_HEIGHT,
           containerID: 1,
           containerName: "prompt",
-          content: visibleText(state),
+          content: glassesContent(),
           isEventCapture: 1,
-        },
-        {
-          xPosition: 0,
-          yPosition: scriptHeight,
-          width: DISPLAY_WIDTH,
-          height: statusHeight,
-          containerID: 2,
-          containerName: "status",
-          content: glassesStatusText(),
-          isEventCapture: 0,
         },
       ],
     });
@@ -215,23 +207,15 @@ async function initGlasses() {
       }
     });
 
-    // Update glasses text and status on each tick
+    // Update glasses text on each tick
     setInterval(async () => {
-      const text = visibleText(state);
+      const content = glassesContent();
       await bridge.textContainerUpgrade({
         containerID: 1,
         containerName: "prompt",
         contentOffset: 0,
-        contentLength: text.length,
-        content: text,
-      });
-      const status = glassesStatusText();
-      await bridge.textContainerUpgrade({
-        containerID: 2,
-        containerName: "status",
-        contentOffset: 0,
-        contentLength: status.length,
-        content: status,
+        contentLength: content.length,
+        content,
       });
     }, 500);
   } catch {
