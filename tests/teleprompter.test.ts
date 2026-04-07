@@ -14,6 +14,9 @@ import {
   isFinished,
   wrapText,
   annotatedLines,
+  formatTime,
+  elapsedSeconds,
+  remainingSeconds,
 } from "../src/teleprompter";
 import type { AnnotatedLine } from "../src/teleprompter";
 
@@ -58,6 +61,10 @@ describe("createState", () => {
   it("starts at line 0", () => {
     expect(createState().lineIndex).toBe(0);
   });
+
+  it("starts with elapsedTicks at 0", () => {
+    expect(createState().elapsedTicks).toBe(0);
+  });
 });
 
 describe("toggleScrolling", () => {
@@ -100,6 +107,17 @@ describe("tick", () => {
     let state = toggleScrolling(createState(SAMPLE_TEXT));
     for (let i = 0; i < 10000; i++) state = tick(state);
     expect(state.lineIndex).toBeGreaterThan(0);
+  });
+
+  it("increments elapsedTicks when scrolling", () => {
+    let state = toggleScrolling(createState(SAMPLE_TEXT));
+    state = tick(state);
+    expect(state.elapsedTicks).toBe(1);
+  });
+
+  it("does not increment elapsedTicks when paused", () => {
+    const state = createState("Hello world line one\nLine two");
+    expect(tick(state).elapsedTicks).toBe(0);
   });
 
   it("does not exceed last line", () => {
@@ -157,6 +175,66 @@ describe("restart", () => {
   it("pauses scrolling", () => {
     const state = { ...createState(SAMPLE_TEXT), scrolling: true };
     expect(restart(state).scrolling).toBe(false);
+  });
+
+  it("resets elapsedTicks to 0", () => {
+    const state = { ...createState(SAMPLE_TEXT), elapsedTicks: 300, scrolling: true };
+    expect(restart(state).elapsedTicks).toBe(0);
+  });
+});
+
+describe("formatTime", () => {
+  it("formats 0 seconds as 00:00", () => {
+    expect(formatTime(0)).toBe("00:00");
+  });
+
+  it("formats 65 seconds as 01:05", () => {
+    expect(formatTime(65)).toBe("01:05");
+  });
+
+  it("formats 59 seconds as 00:59", () => {
+    expect(formatTime(59)).toBe("00:59");
+  });
+
+  it("formats 3661 seconds as 61:01", () => {
+    expect(formatTime(3661)).toBe("61:01");
+  });
+});
+
+describe("elapsedSeconds", () => {
+  it("returns 0 for a fresh state", () => {
+    expect(elapsedSeconds(createState())).toBe(0);
+  });
+
+  it("converts 60 ticks to 1 second", () => {
+    const state = { ...createState(), elapsedTicks: 60 };
+    expect(elapsedSeconds(state)).toBe(1);
+  });
+
+  it("converts 120 ticks to 2 seconds", () => {
+    const state = { ...createState(), elapsedTicks: 120 };
+    expect(elapsedSeconds(state)).toBe(2);
+  });
+});
+
+describe("remainingSeconds", () => {
+  it("returns 0 when at last line", () => {
+    const state = createState("a\nb");
+    expect(remainingSeconds({ ...state, lineIndex: state.lines.length - 1, _lineFrac: 0 })).toBe(0);
+  });
+
+  it("estimates remaining time based on speed and lines left", () => {
+    // 150 WPM => linesPerSecond = 150/60/6 = 5/12
+    // 10 lines remaining => 10 / (5/12) = 24 seconds
+    const text = Array.from({ length: 11 }, (_, i) => `line${i}`).join("\n");
+    const state = { ...createState(text), speedWpm: 150, lineIndex: 0, _lineFrac: 0 };
+    // lines remaining = 11 - 1 - 0 = 10
+    expect(remainingSeconds(state)).toBe(24);
+  });
+
+  it("returns 0 for single-line text", () => {
+    const state = createState("Hello");
+    expect(remainingSeconds(state)).toBe(0);
   });
 });
 

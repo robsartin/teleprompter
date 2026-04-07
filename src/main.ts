@@ -12,6 +12,9 @@ import {
   visibleText,
   annotatedLines,
   restart,
+  formatTime,
+  elapsedSeconds,
+  remainingSeconds,
   SAMPLE_TEXT,
   DISPLAY_WIDTH,
   DISPLAY_HEIGHT,
@@ -59,7 +62,11 @@ function renderBrowser() {
     div.style.color = line.isCurrent ? "#fff" : "#888";
     scriptEl.appendChild(div);
   }
-  statusEl.textContent = state.scrolling ? `▶ ${state.speedWpm} WPM` : "⏸";
+  const elapsed = formatTime(elapsedSeconds(state));
+  const remaining = formatTime(remainingSeconds(state));
+  statusEl.textContent = state.scrolling
+    ? `▶ ${state.speedWpm} WPM | ${elapsed} / -${remaining}`
+    : `⏸ | ${elapsed} / -${remaining}`;
 }
 
 document.addEventListener("keydown", (e) => {
