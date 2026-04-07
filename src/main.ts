@@ -144,8 +144,8 @@ function glassesStatusText(): string {
   const elapsed = formatTime(elapsedSeconds(state));
   const remaining = formatTime(remainingSeconds(state));
   return state.scrolling
-    ? `▶ ${state.speedWpm} WPM | ${elapsed} / -${remaining}`
-    : `⏸ ${state.speedWpm} WPM | ${elapsed} / -${remaining}`;
+    ? `> ${state.speedWpm} WPM | ${elapsed} / -${remaining}`
+    : `|| ${state.speedWpm} WPM | ${elapsed} / -${remaining}`;
 }
 
 function glassesContent(): string {
