@@ -15,7 +15,7 @@ import {
   DISPLAY_HEIGHT,
 } from "./teleprompter";
 
-let state = createState(SAMPLE_TEXT);
+let state = toggleScrolling(createState(SAMPLE_TEXT));
 
 // --- Browser fallback UI ---
 const scriptEl = document.getElementById("script-text")!;

@@ -1,25 +1,48 @@
 import { describe, it, expect } from "vitest";
 import {
   SAMPLE_TEXT,
+  CHARS_PER_LINE,
   createState,
   toggleScrolling,
   setSpeed,
   tick,
+  visibleLines,
   visibleText,
   progress,
   restart,
-  charsPerTick,
+  linesPerTick,
   isFinished,
-  MAX_TEXT_LENGTH,
+  wrapText,
 } from "../src/teleprompter";
 
+describe("wrapText", () => {
+  it("wraps long lines at word boundaries", () => {
+    const lines = wrapText("one two three four five six", 10);
+    for (const line of lines) {
+      expect(line.length).toBeLessThanOrEqual(10);
+    }
+  });
+
+  it("preserves empty lines for paragraph breaks", () => {
+    const lines = wrapText("hello\n\nworld", 40);
+    expect(lines).toEqual(["hello", "", "world"]);
+  });
+
+  it("keeps short lines intact", () => {
+    expect(wrapText("hi", 40)).toEqual(["hi"]);
+  });
+});
+
 describe("createState", () => {
-  it("uses sample text by default", () => {
-    expect(createState().text).toBe(SAMPLE_TEXT);
+  it("wraps sample text into lines", () => {
+    const state = createState();
+    expect(state.lines.length).toBeGreaterThan(1);
+    expect(state.lines[0]).toBeTruthy();
   });
 
   it("accepts custom text", () => {
-    expect(createState("Custom").text).toBe("Custom");
+    const state = createState("Custom");
+    expect(state.lines).toEqual(["Custom"]);
   });
 
   it("starts paused", () => {
@@ -30,8 +53,8 @@ describe("createState", () => {
     expect(createState().speedWpm).toBe(150);
   });
 
-  it("starts at charOffset 0", () => {
-    expect(createState().charOffset).toBe(0);
+  it("starts at line 0", () => {
+    expect(createState().lineIndex).toBe(0);
   });
 });
 
@@ -55,82 +78,93 @@ describe("setSpeed", () => {
   });
 });
 
-describe("charsPerTick", () => {
+describe("linesPerTick", () => {
   it("returns positive value", () => {
-    expect(charsPerTick(150)).toBeGreaterThan(0);
+    expect(linesPerTick(150)).toBeGreaterThan(0);
   });
 
   it("scales with speed", () => {
-    expect(charsPerTick(200)).toBeGreaterThan(charsPerTick(100));
+    expect(linesPerTick(200)).toBeGreaterThan(linesPerTick(100));
   });
 });
 
 describe("tick", () => {
   it("does not advance when paused", () => {
-    const state = createState("Hello");
-    expect(tick(state).charOffset).toBe(0);
+    const state = createState("Hello world line one\nLine two");
+    expect(tick(state).lineIndex).toBe(0);
   });
 
-  it("advances when scrolling", () => {
-    let state = toggleScrolling(createState("Hello, this is a longer text for testing."));
-    state = tick(state);
-    expect(state.charOffset).toBeGreaterThan(0);
+  it("advances lines when scrolling", () => {
+    let state = toggleScrolling(createState(SAMPLE_TEXT));
+    for (let i = 0; i < 10000; i++) state = tick(state);
+    expect(state.lineIndex).toBeGreaterThan(0);
   });
 
-  it("does not exceed text length", () => {
-    let state = toggleScrolling(createState("Hi"));
+  it("does not exceed last line", () => {
+    let state = toggleScrolling(createState("line1\nline2\nline3"));
     for (let i = 0; i < 100000; i++) state = tick(state);
-    expect(state.charOffset).toBeLessThanOrEqual(state.text.length);
+    expect(state.lineIndex).toBeLessThanOrEqual(state.lines.length - 1);
+  });
+
+  it("stops scrolling at the end", () => {
+    let state = toggleScrolling(createState("line1\nline2"));
+    for (let i = 0; i < 100000; i++) state = tick(state);
+    expect(state.scrolling).toBe(false);
+  });
+});
+
+describe("visibleLines", () => {
+  it("returns lines from current index", () => {
+    const state = { ...createState("a\nb\nc\nd\ne"), lineIndex: 1, _lineFrac: 0 };
+    const lines = visibleLines(state, 3);
+    expect(lines[0]).toBe("b");
+    expect(lines.length).toBe(3);
   });
 });
 
 describe("visibleText", () => {
-  it("returns text from current offset", () => {
-    const state = { ...createState("ABCDEF"), charOffset: 2 };
-    expect(visibleText(state)).toBe("CDEF");
-  });
-
-  it("truncates to MAX_TEXT_LENGTH", () => {
-    const longText = "x".repeat(5000);
-    const state = createState(longText);
-    expect(visibleText(state).length).toBe(MAX_TEXT_LENGTH);
+  it("joins visible lines with newlines", () => {
+    const state = createState("line1\nline2\nline3");
+    expect(visibleText(state, 2)).toBe("line1\nline2");
   });
 });
 
 describe("progress", () => {
   it("is 0 at start", () => {
-    expect(progress(createState("Hello"))).toBe(0);
+    expect(progress(createState(SAMPLE_TEXT))).toBe(0);
   });
 
-  it("is 100 at end", () => {
-    const state = { ...createState("Hi"), charOffset: 2 };
-    expect(progress(state)).toBe(100);
+  it("is 100 at last line", () => {
+    const state = createState("a\nb\nc");
+    expect(progress({ ...state, lineIndex: state.lines.length - 1, _lineFrac: 0 })).toBe(100);
   });
 
-  it("is 100 for empty text", () => {
-    expect(progress(createState(""))).toBe(100);
+  it("is 100 for single-line text", () => {
+    expect(progress(createState("Hello"))).toBe(100);
   });
 });
 
 describe("restart", () => {
-  it("resets offset to 0", () => {
-    const state = { ...createState("Hello"), charOffset: 3, scrolling: true };
-    expect(restart(state).charOffset).toBe(0);
+  it("resets lineIndex to 0", () => {
+    const state = { ...createState(SAMPLE_TEXT), lineIndex: 5, _lineFrac: 0.5, scrolling: true };
+    const restarted = restart(state);
+    expect(restarted.lineIndex).toBe(0);
+    expect(restarted._lineFrac).toBe(0);
   });
 
   it("pauses scrolling", () => {
-    const state = { ...createState("Hello"), scrolling: true };
+    const state = { ...createState(SAMPLE_TEXT), scrolling: true };
     expect(restart(state).scrolling).toBe(false);
   });
 });
 
 describe("isFinished", () => {
   it("false at start", () => {
-    expect(isFinished(createState("Hello"))).toBe(false);
+    expect(isFinished(createState(SAMPLE_TEXT))).toBe(false);
   });
 
-  it("true when offset reaches text length", () => {
-    const state = { ...createState("Hi"), charOffset: 2 };
-    expect(isFinished(state)).toBe(true);
+  it("true at last line", () => {
+    const state = createState("a\nb");
+    expect(isFinished({ ...state, lineIndex: state.lines.length - 1, _lineFrac: 0 })).toBe(true);
   });
 });
