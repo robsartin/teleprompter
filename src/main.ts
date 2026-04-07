@@ -7,6 +7,8 @@
 import {
   createState,
   toggleScrolling,
+  startCountdown,
+  countdownText,
   tick as tickState,
   visibleText,
   annotatedLines,
@@ -23,20 +25,38 @@ const scriptEl = document.getElementById("script-text")!;
 const statusEl = document.getElementById("status")!;
 
 function renderBrowser() {
-  scriptEl.innerHTML = "";
-  for (const line of annotatedLines(state)) {
+  const cdText = countdownText(state);
+  if (cdText) {
+    scriptEl.innerHTML = "";
     const div = document.createElement("div");
-    div.textContent = line.text || "\u00A0"; // non-breaking space for empty lines
-    div.style.color = line.isCurrent ? "#fff" : "#888";
+    div.textContent = cdText;
+    div.style.color = "#fff";
+    div.style.fontSize = "48px";
+    div.style.textAlign = "center";
     scriptEl.appendChild(div);
+    statusEl.textContent = "⏳";
+  } else {
+    scriptEl.innerHTML = "";
+    for (const line of annotatedLines(state)) {
+      const div = document.createElement("div");
+      div.textContent = line.text || "\u00A0";
+      div.style.color = line.isCurrent ? "#fff" : "#888";
+      scriptEl.appendChild(div);
+    }
+    statusEl.textContent = state.scrolling ? `▶ ${state.speedWpm} WPM` : "⏸";
   }
-  statusEl.textContent = state.scrolling ? `▶ ${state.speedWpm} WPM` : "⏸";
 }
 
 document.addEventListener("keydown", (e) => {
   if (e.code === "Space") {
     e.preventDefault();
-    state = toggleScrolling(state);
+    if (state.countdown > 0) {
+      state = toggleScrolling(state);
+    } else if (state.scrolling) {
+      state = toggleScrolling(state);
+    } else {
+      state = startCountdown(state);
+    }
   }
   if (e.code === "KeyR") {
     state = restart(state);
