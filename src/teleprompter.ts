@@ -127,6 +127,22 @@ export function progress(state: TeleprompterState): number {
   return Math.min(100, Math.round((state.lineIndex / (state.lines.length - 1)) * 100));
 }
 
+export interface AnnotatedLine {
+  text: string;
+  isCurrent: boolean;
+}
+
+/**
+ * Get visible lines annotated with whether each is the current line.
+ * The first line (at lineIndex) has isCurrent: true; the rest are false.
+ */
+export function annotatedLines(state: TeleprompterState, count: number = 8): AnnotatedLine[] {
+  return visibleLines(state, count).map((text, i) => ({
+    text,
+    isCurrent: i === 0,
+  }));
+}
+
 /**
  * Whether the script has reached the last line.
  */

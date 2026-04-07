@@ -13,7 +13,9 @@ import {
   linesPerTick,
   isFinished,
   wrapText,
+  annotatedLines,
 } from "../src/teleprompter";
+import type { AnnotatedLine } from "../src/teleprompter";
 
 describe("wrapText", () => {
   it("wraps long lines at word boundaries", () => {
@@ -166,5 +168,39 @@ describe("isFinished", () => {
   it("true at last line", () => {
     const state = createState("a\nb");
     expect(isFinished({ ...state, lineIndex: state.lines.length - 1, _lineFrac: 0 })).toBe(true);
+  });
+});
+
+describe("annotatedLines", () => {
+  it("marks the first line as current", () => {
+    const state = createState("a\nb\nc\nd\ne");
+    const result: AnnotatedLine[] = annotatedLines(state, 3);
+    expect(result[0]).toEqual({ text: "a", isCurrent: true });
+  });
+
+  it("marks remaining lines as not current", () => {
+    const state = createState("a\nb\nc\nd\ne");
+    const result = annotatedLines(state, 3);
+    expect(result[1]).toEqual({ text: "b", isCurrent: false });
+    expect(result[2]).toEqual({ text: "c", isCurrent: false });
+  });
+
+  it("returns up to count lines", () => {
+    const state = createState("a\nb\nc\nd\ne");
+    expect(annotatedLines(state, 3).length).toBe(3);
+  });
+
+  it("respects lineIndex offset", () => {
+    const state = { ...createState("a\nb\nc\nd\ne"), lineIndex: 2, _lineFrac: 0 };
+    const result = annotatedLines(state, 2);
+    expect(result[0]).toEqual({ text: "c", isCurrent: true });
+    expect(result[1]).toEqual({ text: "d", isCurrent: false });
+  });
+
+  it("returns fewer lines when near end of text", () => {
+    const state = { ...createState("a\nb\nc"), lineIndex: 2, _lineFrac: 0 };
+    const result = annotatedLines(state, 5);
+    expect(result.length).toBe(1);
+    expect(result[0]).toEqual({ text: "c", isCurrent: true });
   });
 });
