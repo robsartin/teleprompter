@@ -15,5 +15,9 @@ export function mapEventToAction(event: {
   if (event.textEvent) {
     return "toggle";
   }
+  if (event.listEvent) {
+    if (event.listEvent.currentSelectItemIndex === 0) return "speed_up";
+    if (event.listEvent.currentSelectItemIndex === 1) return "speed_down";
+  }
   return "none";
 }
