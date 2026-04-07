@@ -140,6 +140,14 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
+function glassesStatusText(): string {
+  const elapsed = formatTime(elapsedSeconds(state));
+  const remaining = formatTime(remainingSeconds(state));
+  return state.scrolling
+    ? `▶ ${state.speedWpm} WPM | ${elapsed} / -${remaining}`
+    : `⏸ ${state.speedWpm} WPM | ${elapsed} / -${remaining}`;
+}
+
 // --- Even Hub glasses UI ---
 async function initGlasses() {
   try {
@@ -152,19 +160,31 @@ async function initGlasses() {
     // Sync settings with glasses localStorage
     await initGlassesStorage(bridge);
 
-    // Create a single text container filling the display
+    // Create two text containers: script (top) and status bar (bottom)
+    const statusHeight = 24;
+    const scriptHeight = DISPLAY_HEIGHT - statusHeight;
     const result = await bridge.createStartUpPageContainer({
-      containerTotalNum: 1,
+      containerTotalNum: 2,
       textObject: [
         {
           xPosition: 0,
           yPosition: 0,
           width: DISPLAY_WIDTH,
-          height: DISPLAY_HEIGHT,
+          height: scriptHeight,
           containerID: 1,
           containerName: "prompt",
           content: visibleText(state),
           isEventCapture: 1,
+        },
+        {
+          xPosition: 0,
+          yPosition: scriptHeight,
+          width: DISPLAY_WIDTH,
+          height: statusHeight,
+          containerID: 2,
+          containerName: "status",
+          content: glassesStatusText(),
+          isEventCapture: 0,
         },
       ],
     });
@@ -195,7 +215,7 @@ async function initGlasses() {
       }
     });
 
-    // Update glasses text on each tick
+    // Update glasses text and status on each tick
     setInterval(async () => {
       const text = visibleText(state);
       await bridge.textContainerUpgrade({
@@ -204,6 +224,14 @@ async function initGlasses() {
         contentOffset: 0,
         contentLength: text.length,
         content: text,
+      });
+      const status = glassesStatusText();
+      await bridge.textContainerUpgrade({
+        containerID: 2,
+        containerName: "status",
+        contentOffset: 0,
+        contentLength: status.length,
+        content: status,
       });
     }, 500);
   } catch {
