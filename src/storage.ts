@@ -7,3 +7,7 @@ export interface Settings {
 }
 
 export const DEFAULT_SETTINGS: Settings = { speedWpm: 150 };
+
+export function serializeSettings(settings: Settings): string {
+  return JSON.stringify(settings);
+}
