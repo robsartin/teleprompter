@@ -19,6 +19,7 @@ import {
   DISPLAY_WIDTH,
   DISPLAY_HEIGHT,
 } from "./teleprompter";
+import { parseScriptUrl, isValidUrl } from "./loader";
 import {
   STORAGE_KEY,
   DEFAULT_SETTINGS,
@@ -50,6 +51,32 @@ function saveSettings(settings: Settings): void {
 
 const initialSettings = loadSettings();
 let state = setSpeed(toggleScrolling(createState(SAMPLE_TEXT)), initialSettings.speedWpm);
+
+// --- Load script from URL param ---
+async function loadScriptFromUrl() {
+  const url = parseScriptUrl(window.location.search);
+  if (url && isValidUrl(url)) {
+    try {
+      const response = await fetch(url);
+      if (response.ok) {
+        const text = await response.text();
+        state = setSpeed(toggleScrolling(createState(text)), state.speedWpm);
+      }
+    } catch {
+      // Fetch failed — keep default script
+    }
+  }
+}
+
+loadScriptFromUrl();
+
+// --- Paste handler ---
+document.addEventListener("paste", (e) => {
+  const text = e.clipboardData?.getData("text/plain");
+  if (text) {
+    state = setSpeed(createState(text), state.speedWpm);
+  }
+});
 
 // --- Browser fallback UI ---
 const scriptEl = document.getElementById("script-text")!;
