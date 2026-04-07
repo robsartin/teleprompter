@@ -19,6 +19,7 @@ import {
   DISPLAY_WIDTH,
   DISPLAY_HEIGHT,
 } from "./teleprompter";
+import { parseScriptUrl, isValidUrl } from "./loader";
 import {
   STORAGE_KEY,
   DEFAULT_SETTINGS,
@@ -27,6 +28,7 @@ import {
   mergeSettings,
   type Settings,
 } from "./storage";
+import { mapEventToAction } from "./gestures";
 
 // --- Load persisted settings ---
 function loadSettings(): Settings {
@@ -50,13 +52,39 @@ function saveSettings(settings: Settings): void {
 const initialSettings = loadSettings();
 let state = setSpeed(toggleScrolling(createState(SAMPLE_TEXT)), initialSettings.speedWpm);
 
+// --- Load script from URL param ---
+async function loadScriptFromUrl() {
+  const url = parseScriptUrl(window.location.search);
+  if (url && isValidUrl(url)) {
+    try {
+      const response = await fetch(url);
+      if (response.ok) {
+        const text = await response.text();
+        state = setSpeed(toggleScrolling(createState(text)), state.speedWpm);
+      }
+    } catch {
+      // Fetch failed — keep default script
+    }
+  }
+}
+
+loadScriptFromUrl();
+
+// --- Paste handler ---
+document.addEventListener("paste", (e) => {
+  const text = e.clipboardData?.getData("text/plain");
+  if (text) {
+    state = setSpeed(createState(text), state.speedWpm);
+  }
+});
+
 // --- Browser fallback UI ---
 const scriptEl = document.getElementById("script-text")!;
 const statusEl = document.getElementById("status")!;
 
 function renderBrowser() {
   scriptEl.innerHTML = "";
-  for (const line of annotatedLines(state)) {
+  for (const line of annotatedLines(state, 7)) {
     const div = document.createElement("div");
     div.textContent = line.text || "\u00A0"; // non-breaking space for empty lines
     div.style.color = line.isCurrent ? "#fff" : "#888";
@@ -121,10 +149,24 @@ async function initGlasses() {
       return;
     }
 
-    // Listen for tap events to toggle scrolling
+    // Listen for tap/gesture events on the glasses
     bridge.onEvenHubEvent((event) => {
-      if (event.textEvent || event.sysEvent) {
-        state = toggleScrolling(state);
+      const action = mapEventToAction(event);
+      switch (action) {
+        case "toggle":
+          state = toggleScrolling(state);
+          break;
+        case "restart":
+          state = restart(state);
+          break;
+        case "speed_up":
+          state = setSpeed(state, state.speedWpm + 10);
+          saveSettings({ speedWpm: state.speedWpm });
+          break;
+        case "speed_down":
+          state = setSpeed(state, state.speedWpm - 10);
+          saveSettings({ speedWpm: state.speedWpm });
+          break;
       }
     });
 
