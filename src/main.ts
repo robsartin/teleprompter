@@ -7,6 +7,7 @@
 import {
   createState,
   toggleScrolling,
+  setSpeed,
   tick as tickState,
   visibleText,
   annotatedLines,
@@ -15,8 +16,36 @@ import {
   DISPLAY_WIDTH,
   DISPLAY_HEIGHT,
 } from "./teleprompter";
+import {
+  STORAGE_KEY,
+  DEFAULT_SETTINGS,
+  serializeSettings,
+  deserializeSettings,
+  mergeSettings,
+  type Settings,
+} from "./storage";
 
-let state = toggleScrolling(createState(SAMPLE_TEXT));
+// --- Load persisted settings ---
+function loadSettings(): Settings {
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (raw === null) return DEFAULT_SETTINGS;
+    return mergeSettings(deserializeSettings(raw), DEFAULT_SETTINGS);
+  } catch {
+    return DEFAULT_SETTINGS;
+  }
+}
+
+function saveSettings(settings: Settings): void {
+  try {
+    window.localStorage.setItem(STORAGE_KEY, serializeSettings(settings));
+  } catch {
+    // localStorage may be unavailable — silently ignore
+  }
+}
+
+const initialSettings = loadSettings();
+let state = setSpeed(toggleScrolling(createState(SAMPLE_TEXT)), initialSettings.speedWpm);
 
 // --- Browser fallback UI ---
 const scriptEl = document.getElementById("script-text")!;
@@ -41,6 +70,14 @@ document.addEventListener("keydown", (e) => {
   if (e.code === "KeyR") {
     state = restart(state);
   }
+  if (e.code === "ArrowUp") {
+    state = setSpeed(state, state.speedWpm + 10);
+    saveSettings({ speedWpm: state.speedWpm });
+  }
+  if (e.code === "ArrowDown") {
+    state = setSpeed(state, state.speedWpm - 10);
+    saveSettings({ speedWpm: state.speedWpm });
+  }
 });
 
 // --- Even Hub glasses UI ---
@@ -51,6 +88,9 @@ async function initGlasses() {
     } = await import("@evenrealities/even_hub_sdk");
 
     const bridge = await waitForEvenAppBridge();
+
+    // Sync settings with glasses localStorage
+    await initGlassesStorage(bridge);
 
     // Create a single text container filling the display
     const result = await bridge.createStartUpPageContainer({
@@ -94,6 +134,25 @@ async function initGlasses() {
     }, 500);
   } catch {
     // Not running in Even App — browser-only mode
+  }
+}
+
+// --- Even Hub glasses localStorage sync ---
+async function initGlassesStorage(bridge: { getLocalStorage?: (key: string) => Promise<string | null>; setLocalStorage?: (key: string, value: string) => Promise<void> }): Promise<void> {
+  try {
+    if (bridge.getLocalStorage) {
+      const raw = await bridge.getLocalStorage(STORAGE_KEY);
+      if (raw !== null) {
+        const saved = mergeSettings(deserializeSettings(raw), DEFAULT_SETTINGS);
+        state = setSpeed(state, saved.speedWpm);
+      }
+    }
+    // Save current settings to glasses storage
+    if (bridge.setLocalStorage) {
+      await bridge.setLocalStorage(STORAGE_KEY, serializeSettings({ speedWpm: state.speedWpm }));
+    }
+  } catch {
+    // glasses storage unavailable — silently ignore
   }
 }
 
