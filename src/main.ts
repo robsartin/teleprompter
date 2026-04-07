@@ -9,20 +9,27 @@ import {
   toggleScrolling,
   tick as tickState,
   visibleText,
+  annotatedLines,
   restart,
   SAMPLE_TEXT,
   DISPLAY_WIDTH,
   DISPLAY_HEIGHT,
 } from "./teleprompter";
 
-let state = createState(SAMPLE_TEXT);
+let state = toggleScrolling(createState(SAMPLE_TEXT));
 
 // --- Browser fallback UI ---
 const scriptEl = document.getElementById("script-text")!;
 const statusEl = document.getElementById("status")!;
 
 function renderBrowser() {
-  scriptEl.textContent = visibleText(state);
+  scriptEl.innerHTML = "";
+  for (const line of annotatedLines(state)) {
+    const div = document.createElement("div");
+    div.textContent = line.text || "\u00A0"; // non-breaking space for empty lines
+    div.style.color = line.isCurrent ? "#fff" : "#888";
+    scriptEl.appendChild(div);
+  }
   statusEl.textContent = state.scrolling ? `▶ ${state.speedWpm} WPM` : "⏸";
 }
 
