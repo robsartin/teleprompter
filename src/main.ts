@@ -27,6 +27,7 @@ import {
   mergeSettings,
   type Settings,
 } from "./storage";
+import { mapEventToAction } from "./gestures";
 
 // --- Load persisted settings ---
 function loadSettings(): Settings {
@@ -56,7 +57,7 @@ const statusEl = document.getElementById("status")!;
 
 function renderBrowser() {
   scriptEl.innerHTML = "";
-  for (const line of annotatedLines(state)) {
+  for (const line of annotatedLines(state, 7)) {
     const div = document.createElement("div");
     div.textContent = line.text || "\u00A0"; // non-breaking space for empty lines
     div.style.color = line.isCurrent ? "#fff" : "#888";
@@ -121,10 +122,24 @@ async function initGlasses() {
       return;
     }
 
-    // Listen for tap events to toggle scrolling
+    // Listen for tap/gesture events on the glasses
     bridge.onEvenHubEvent((event) => {
-      if (event.textEvent || event.sysEvent) {
-        state = toggleScrolling(state);
+      const action = mapEventToAction(event);
+      switch (action) {
+        case "toggle":
+          state = toggleScrolling(state);
+          break;
+        case "restart":
+          state = restart(state);
+          break;
+        case "speed_up":
+          state = setSpeed(state, state.speedWpm + 10);
+          saveSettings({ speedWpm: state.speedWpm });
+          break;
+        case "speed_down":
+          state = setSpeed(state, state.speedWpm - 10);
+          saveSettings({ speedWpm: state.speedWpm });
+          break;
       }
     });
 
