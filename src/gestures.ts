@@ -12,5 +12,8 @@ export function mapEventToAction(event: {
   if (event.sysEvent && typeof event.sysEvent.eventType === "string" && event.sysEvent.eventType.includes("double")) {
     return "restart";
   }
+  if (event.textEvent) {
+    return "toggle";
+  }
   return "none";
 }
