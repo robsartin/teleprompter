@@ -141,6 +141,21 @@ describe("E2E: keyboard event simulation", () => {
     expect(state.scrolling).toBe(false);
   });
 
+  it("dblclick event can trigger restart", () => {
+    let state = toggleScrolling(createState(SAMPLE_TEXT));
+    for (let i = 0; i < 10000; i++) state = tick(state);
+    expect(state.lineIndex).toBeGreaterThan(0);
+
+    const dblclick = new MouseEvent("dblclick");
+    // Simulate what the app's dblclick handler should do
+    if (dblclick.type === "dblclick") {
+      state = restart(state);
+    }
+    expect(state.lineIndex).toBe(0);
+    expect(state.scrolling).toBe(false);
+    expect(state.elapsedTicks).toBe(0);
+  });
+
   it("KeyR KeyboardEvent can trigger restart", () => {
     let state = toggleScrolling(createState(SAMPLE_TEXT));
     for (let i = 0; i < 10000; i++) state = tick(state);

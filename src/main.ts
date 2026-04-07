@@ -116,6 +116,10 @@ function renderBrowser() {
   }
 }
 
+document.addEventListener("dblclick", () => {
+  state = restart(state);
+});
+
 document.addEventListener("keydown", (e) => {
   if (e.code === "Space") {
     e.preventDefault();
