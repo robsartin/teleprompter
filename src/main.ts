@@ -100,7 +100,12 @@ function renderBrowser() {
     for (const line of annotatedLines(state, 7)) {
       const div = document.createElement("div");
       div.textContent = line.text || "\u00A0";
-      div.style.color = line.isCurrent ? "#fff" : "#888";
+      div.style.color = line.isCurrent ? "#fff" : "#555";
+      if (line.isCurrent) {
+        div.style.fontSize = "28px";
+        div.style.borderLeft = "3px solid #fff";
+        div.style.paddingLeft = "8px";
+      }
       scriptEl.appendChild(div);
     }
     const elapsed = formatTime(elapsedSeconds(state));
