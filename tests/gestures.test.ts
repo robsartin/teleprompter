@@ -21,4 +21,16 @@ describe("mapEventToAction", () => {
     const action = mapEventToAction({ listEvent: { currentSelectItemIndex: 1 } });
     expect(action).toBe("speed_down");
   });
+
+  it('returns "none" for an empty event', () => {
+    expect(mapEventToAction({})).toBe("none");
+  });
+
+  it('returns "none" for sysEvent without "double" in eventType', () => {
+    expect(mapEventToAction({ sysEvent: { eventType: "single_tap" } })).toBe("none");
+  });
+
+  it('returns "none" for listEvent with unknown index', () => {
+    expect(mapEventToAction({ listEvent: { currentSelectItemIndex: 5 } })).toBe("none");
+  });
 });
