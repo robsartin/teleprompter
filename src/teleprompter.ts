@@ -26,6 +26,8 @@ export interface TeleprompterState {
   lineIndex: number;
   /** Fractional accumulator for sub-line ticks. */
   _lineFrac: number;
+  /** Number of ticks elapsed while scrolling. */
+  elapsedTicks: number;
 }
 
 /**
@@ -63,6 +65,7 @@ export function createState(text: string = SAMPLE_TEXT): TeleprompterState {
     speedWpm: 150,
     lineIndex: 0,
     _lineFrac: 0,
+    elapsedTicks: 0,
   };
 }
 
@@ -75,7 +78,36 @@ export function setSpeed(state: TeleprompterState, wpm: number): TeleprompterSta
 }
 
 export function restart(state: TeleprompterState): TeleprompterState {
-  return { ...state, lineIndex: 0, _lineFrac: 0, scrolling: false };
+  return { ...state, lineIndex: 0, _lineFrac: 0, scrolling: false, elapsedTicks: 0 };
+}
+
+/**
+ * Elapsed time in seconds (elapsedTicks at 60fps).
+ */
+export function elapsedSeconds(state: TeleprompterState): number {
+  return state.elapsedTicks / 60;
+}
+
+/**
+ * Estimated remaining seconds based on lines left and current speed.
+ * Lines remaining = state.lines.length - 1 - state.lineIndex.
+ * Lines per second = speedWpm / 60 / 6.
+ */
+export function remainingSeconds(state: TeleprompterState): number {
+  const linesRemaining = state.lines.length - 1 - state.lineIndex;
+  if (linesRemaining <= 0) return 0;
+  const linesPerSecond = state.speedWpm / 60 / 6;
+  if (linesPerSecond <= 0) return 0;
+  return linesRemaining / linesPerSecond;
+}
+
+/**
+ * Format a number of seconds as MM:SS.
+ */
+export function formatTime(seconds: number): string {
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
 }
 
 /**
@@ -101,7 +133,7 @@ export function tick(state: TeleprompterState): TeleprompterState {
   const remainder = newFrac - wholeLines;
   const newIndex = Math.min(state.lineIndex + wholeLines, maxLine);
 
-  return { ...state, lineIndex: newIndex, _lineFrac: remainder };
+  return { ...state, lineIndex: newIndex, _lineFrac: remainder, elapsedTicks: state.elapsedTicks + 1 };
 }
 
 /**
