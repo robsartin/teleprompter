@@ -28,6 +28,8 @@ export interface TeleprompterState {
   _lineFrac: number;
   /** Number of ticks elapsed while scrolling. */
   elapsedTicks: number;
+  /** Seconds remaining in countdown (0 means no countdown active). */
+  countdown: number;
 }
 
 /**
@@ -66,10 +68,14 @@ export function createState(text: string = SAMPLE_TEXT): TeleprompterState {
     lineIndex: 0,
     _lineFrac: 0,
     elapsedTicks: 0,
+    countdown: 0,
   };
 }
 
 export function toggleScrolling(state: TeleprompterState): TeleprompterState {
+  if (state.countdown > 0) {
+    return { ...state, countdown: 0, scrolling: false };
+  }
   return { ...state, scrolling: !state.scrolling };
 }
 
@@ -78,7 +84,16 @@ export function setSpeed(state: TeleprompterState, wpm: number): TeleprompterSta
 }
 
 export function restart(state: TeleprompterState): TeleprompterState {
-  return { ...state, lineIndex: 0, _lineFrac: 0, scrolling: false, elapsedTicks: 0 };
+  return { ...state, lineIndex: 0, _lineFrac: 0, scrolling: false, elapsedTicks: 0, countdown: 0 };
+}
+
+export function startCountdown(state: TeleprompterState, seconds: number = 3): TeleprompterState {
+  return { ...state, countdown: seconds, scrolling: false };
+}
+
+export function countdownText(state: TeleprompterState): string | null {
+  if (state.countdown <= 0) return null;
+  return String(Math.ceil(state.countdown));
 }
 
 /**
@@ -124,6 +139,13 @@ export function linesPerTick(speedWpm: number): number {
  * fractional ticks have accumulated.
  */
 export function tick(state: TeleprompterState): TeleprompterState {
+  if (state.countdown > 0) {
+    const newCountdown = state.countdown - 1 / 60;
+    if (newCountdown <= 0) {
+      return { ...state, countdown: 0, scrolling: true };
+    }
+    return { ...state, countdown: newCountdown };
+  }
   if (!state.scrolling) return state;
   const maxLine = state.lines.length - 1;
   if (state.lineIndex >= maxLine) return { ...state, scrolling: false };

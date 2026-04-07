@@ -17,6 +17,8 @@ import {
   formatTime,
   elapsedSeconds,
   remainingSeconds,
+  startCountdown,
+  countdownText,
 } from "../src/teleprompter";
 import type { AnnotatedLine } from "../src/teleprompter";
 
@@ -280,5 +282,63 @@ describe("annotatedLines", () => {
     const result = annotatedLines(state, 5);
     expect(result.length).toBe(1);
     expect(result[0]).toEqual({ text: "c", isCurrent: true });
+  });
+});
+
+describe("toggleScrolling with countdown", () => {
+  it("cancels countdown when countdown > 0", () => {
+    const state = { ...createState("Hello"), countdown: 2 };
+    const result = toggleScrolling(state);
+    expect(result.countdown).toBe(0);
+    expect(result.scrolling).toBe(false);
+  });
+});
+
+describe("startCountdown", () => {
+  it("sets countdown to given seconds", () => {
+    expect(startCountdown(createState("Hello"), 3).countdown).toBe(3);
+  });
+
+  it("defaults to 3 seconds", () => {
+    expect(startCountdown(createState("Hello")).countdown).toBe(3);
+  });
+
+  it("sets scrolling to false", () => {
+    const state = { ...createState("Hello"), scrolling: true };
+    expect(startCountdown(state, 3).scrolling).toBe(false);
+  });
+});
+
+describe("countdownText", () => {
+  it("returns null when countdown is 0", () => {
+    expect(countdownText(createState("Hello"))).toBeNull();
+  });
+
+  it("returns '3' when countdown is between 2 and 3", () => {
+    expect(countdownText({ ...createState("Hello"), countdown: 2.5 })).toBe("3");
+  });
+
+  it("returns '1' when countdown is between 0 and 1", () => {
+    expect(countdownText({ ...createState("Hello"), countdown: 0.5 })).toBe("1");
+  });
+});
+
+describe("tick with countdown", () => {
+  it("decrements countdown", () => {
+    const state = { ...createState("Hello"), countdown: 3 };
+    const result = tick(state);
+    expect(result.countdown).toBeCloseTo(3 - 1 / 60, 10);
+  });
+
+  it("does not scroll while countdown active", () => {
+    const state = { ...createState("Hello"), countdown: 3 };
+    expect(tick(state).lineIndex).toBe(0);
+  });
+
+  it("starts scrolling when countdown crosses 0", () => {
+    const state = { ...createState("Hello"), countdown: 1 / 120 };
+    const result = tick(state);
+    expect(result.countdown).toBe(0);
+    expect(result.scrolling).toBe(true);
   });
 });
