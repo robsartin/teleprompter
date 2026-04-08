@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseLine, isHeading } from "../src/markdown";
+import { parseLine, isHeading, stripMarkdown } from "../src/markdown";
 import type { Token } from "../src/markdown";
 
 describe("parseLine", () => {
@@ -60,5 +60,31 @@ describe("isHeading", () => {
 
   it("returns false for empty string", () => {
     expect(isHeading("")).toBe(false);
+  });
+});
+
+describe("stripMarkdown", () => {
+  it("removes **bold** markers", () => {
+    expect(stripMarkdown("this is **bold** text")).toBe("this is bold text");
+  });
+
+  it("removes *italic* markers", () => {
+    expect(stripMarkdown("this is *italic* text")).toBe("this is italic text");
+  });
+
+  it("removes heading prefix", () => {
+    expect(stripMarkdown("# Introduction")).toBe("Introduction");
+  });
+
+  it("returns plain text unchanged", () => {
+    expect(stripMarkdown("hello world")).toBe("hello world");
+  });
+
+  it("handles mixed markdown", () => {
+    expect(stripMarkdown("# **Bold** and *italic*")).toBe("Bold and italic");
+  });
+
+  it("returns empty string for empty input", () => {
+    expect(stripMarkdown("")).toBe("");
   });
 });
