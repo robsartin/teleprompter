@@ -198,6 +198,15 @@ export function annotatedLines(state: TeleprompterState, count: number = 8): Ann
 }
 
 /**
+ * Total word count of the script.
+ */
+export function wordCount(state: TeleprompterState): number {
+  const text = state.lines.join(" ").trim();
+  if (text.length === 0) return 0;
+  return text.split(/\s+/).length;
+}
+
+/**
  * Whether the script has reached the last line.
  */
 export function isFinished(state: TeleprompterState): boolean {
