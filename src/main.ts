@@ -21,6 +21,7 @@ import {
   DISPLAY_WIDTH,
   DISPLAY_HEIGHT,
   readTimeText,
+  scrollPixelOffset,
 } from "./teleprompter";
 import { parseScriptUrl, isValidUrl } from "./loader";
 import {
@@ -91,10 +92,14 @@ document.addEventListener("paste", (e) => {
 const scriptEl = document.getElementById("script-text")!;
 const statusEl = document.getElementById("status")!;
 
+/** Line height in pixels: 24px font-size * 1.6 line-height. */
+const LINE_HEIGHT_PX = 24 * 1.6; // 38.4
+
 function renderBrowser() {
   const cdText = countdownText(state);
   if (cdText) {
     scriptEl.innerHTML = "";
+    scriptEl.style.transform = "";
     const div = document.createElement("div");
     div.textContent = cdText;
     div.style.color = "#fff";
@@ -104,6 +109,8 @@ function renderBrowser() {
     statusEl.textContent = "⏳";
   } else {
     scriptEl.innerHTML = "";
+    const offset = scrollPixelOffset(state, LINE_HEIGHT_PX);
+    scriptEl.style.transform = `translateY(-${offset}px)`;
     for (const line of annotatedLines(state, 7)) {
       const div = document.createElement("div");
       div.textContent = line.text || "\u00A0";
@@ -120,7 +127,7 @@ function renderBrowser() {
     const connStatus = formatConnectionStatus(connectionInfo);
     statusEl.textContent = state.scrolling
       ? `▶ ${state.speedWpm} WPM | ${elapsed} / -${remaining} | ${connStatus}`
-      : `⏸ | ${elapsed} / -${remaining} | ${connStatus}`;
+      : `⏸ ${readTimeText(state)} | ${connStatus}`;
   }
 }
 
