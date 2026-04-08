@@ -482,3 +482,21 @@ describe("currentWordIndex", () => {
     expect(currentWordIndex(state)).toBe(2);
   });
 });
+
+describe("scrollPixelOffset", () => {
+  it("returns 0 when _lineFrac is 0", () => {
+    const state = createState("a\nb");
+    expect(scrollPixelOffset(state, 38.4)).toBe(0);
+  });
+
+  it("returns half line height at 0.5 frac", () => {
+    const state = { ...createState("a\nb"), _lineFrac: 0.5 };
+    expect(scrollPixelOffset(state, 38.4)).toBeCloseTo(19.2);
+  });
+
+  it("scales with line height", () => {
+    const state = { ...createState("a\nb"), _lineFrac: 0.25 };
+    expect(scrollPixelOffset(state, 40)).toBe(10);
+    expect(scrollPixelOffset(state, 80)).toBe(20);
+  });
+});
