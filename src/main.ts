@@ -22,6 +22,7 @@ import {
   DISPLAY_HEIGHT,
 } from "./teleprompter";
 import { parseScriptUrl, isValidUrl } from "./loader";
+import { decodeSettingsFromParams, buildShareUrl, encodeSettingsToParams } from "./settings-url";
 import {
   STORAGE_KEY,
   DEFAULT_SETTINGS,
@@ -52,7 +53,9 @@ function saveSettings(settings: Settings): void {
 }
 
 const initialSettings = loadSettings();
-let state = setSpeed(toggleScrolling(createState(SAMPLE_TEXT)), initialSettings.speedWpm);
+const urlSettings = decodeSettingsFromParams(window.location.search);
+const effectiveSpeed = urlSettings.speedWpm ?? initialSettings.speedWpm;
+let state = setSpeed(toggleScrolling(createState(SAMPLE_TEXT)), effectiveSpeed);
 
 // --- Load script from URL param ---
 async function loadScriptFromUrl() {
@@ -138,9 +141,19 @@ document.addEventListener("keydown", (e) => {
     state = setSpeed(state, state.speedWpm + 10);
     saveSettings({ speedWpm: state.speedWpm });
   }
+  if (e.code === "KeyS") {
+    const url = buildShareUrl(window.location.origin + window.location.pathname, { speedWpm: state.speedWpm });
+    navigator.clipboard.writeText(url).catch(() => {});
+  }
+  }
   if (e.code === "ArrowDown") {
     state = setSpeed(state, state.speedWpm - 10);
     saveSettings({ speedWpm: state.speedWpm });
+  }
+  if (e.code === "KeyS") {
+    const url = buildShareUrl(window.location.origin + window.location.pathname, { speedWpm: state.speedWpm });
+    navigator.clipboard.writeText(url).catch(() => {});
+  }
   }
 });
 
@@ -203,10 +216,20 @@ async function initGlasses() {
         case "speed_up":
           state = setSpeed(state, state.speedWpm + 10);
           saveSettings({ speedWpm: state.speedWpm });
+  }
+  if (e.code === "KeyS") {
+    const url = buildShareUrl(window.location.origin + window.location.pathname, { speedWpm: state.speedWpm });
+    navigator.clipboard.writeText(url).catch(() => {});
+  }
           break;
         case "speed_down":
           state = setSpeed(state, state.speedWpm - 10);
           saveSettings({ speedWpm: state.speedWpm });
+  }
+  if (e.code === "KeyS") {
+    const url = buildShareUrl(window.location.origin + window.location.pathname, { speedWpm: state.speedWpm });
+    navigator.clipboard.writeText(url).catch(() => {});
+  }
           break;
       }
     });
