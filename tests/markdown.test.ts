@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseLine, isHeading, stripMarkdown } from "../src/markdown";
+import { parseLine, isHeading, stripMarkdown, stripAllMarkdown } from "../src/markdown";
 import type { Token } from "../src/markdown";
 
 describe("parseLine", () => {
@@ -86,5 +86,26 @@ describe("stripMarkdown", () => {
 
   it("returns empty string for empty input", () => {
     expect(stripMarkdown("")).toBe("");
+  });
+});
+
+describe("stripAllMarkdown", () => {
+  it("strips markdown from all lines", () => {
+    const lines = ["# Title", "**bold** text", "*italic* words", "plain"];
+    expect(stripAllMarkdown(lines)).toEqual([
+      "Title",
+      "bold text",
+      "italic words",
+      "plain",
+    ]);
+  });
+
+  it("returns empty array for empty input", () => {
+    expect(stripAllMarkdown([])).toEqual([]);
+  });
+
+  it("preserves empty lines", () => {
+    const lines = ["# Heading", "", "body"];
+    expect(stripAllMarkdown(lines)).toEqual(["Heading", "", "body"]);
   });
 });

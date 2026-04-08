@@ -65,3 +65,10 @@ export function stripMarkdown(line: string): string {
   result = result.replace(/\*(.+?)\*/g, "$1");
   return result;
 }
+
+/**
+ * Strip markdown from all lines (for glasses plain text output).
+ */
+export function stripAllMarkdown(lines: string[]): string[] {
+  return lines.map(stripMarkdown);
+}
