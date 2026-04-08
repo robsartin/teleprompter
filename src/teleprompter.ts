@@ -238,3 +238,24 @@ export function scrollPixelOffset(state: TeleprompterState, lineHeightPx: number
 export function isFinished(state: TeleprompterState): boolean {
   return state.lineIndex >= state.lines.length - 1;
 }
+
+/**
+ * Split the current line (at lineIndex) into words.
+ */
+export function wordsInCurrentLine(state: TeleprompterState): string[] {
+  const line = state.lines[state.lineIndex] ?? "";
+  if (line.trim() === "") return [];
+  return line.split(/\s+/);
+}
+
+/**
+ * Estimate which word in the current line is being read, based on _lineFrac.
+ * Word index = floor(_lineFrac * wordCount), clamped to [0, wordCount - 1].
+ * Returns 0 for empty lines.
+ */
+export function currentWordIndex(state: TeleprompterState): number {
+  const words = wordsInCurrentLine(state);
+  if (words.length === 0) return 0;
+  const idx = Math.floor(state._lineFrac * words.length);
+  return Math.min(idx, words.length - 1);
+}
