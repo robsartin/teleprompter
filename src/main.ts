@@ -20,6 +20,7 @@ import {
   SAMPLE_TEXT,
   DISPLAY_WIDTH,
   DISPLAY_HEIGHT,
+  readTimeText,
 } from "./teleprompter";
 import { parseScriptUrl, isValidUrl } from "./loader";
 import {
@@ -31,6 +32,11 @@ import {
   type Settings,
 } from "./storage";
 import { mapEventToAction } from "./gestures";
+import {
+  DEFAULT_CONNECTION,
+  formatConnectionStatus,
+  type ConnectionInfo,
+} from "./connection";
 
 // --- Load persisted settings ---
 function loadSettings(): Settings {
@@ -53,6 +59,7 @@ function saveSettings(settings: Settings): void {
 
 const initialSettings = loadSettings();
 let state = setSpeed(toggleScrolling(createState(SAMPLE_TEXT)), initialSettings.speedWpm);
+let connectionInfo: ConnectionInfo = DEFAULT_CONNECTION;
 
 // --- Load script from URL param ---
 async function loadScriptFromUrl() {
@@ -110,9 +117,10 @@ function renderBrowser() {
     }
     const elapsed = formatTime(elapsedSeconds(state));
     const remaining = formatTime(remainingSeconds(state));
+    const connStatus = formatConnectionStatus(connectionInfo);
     statusEl.textContent = state.scrolling
-      ? `▶ ${state.speedWpm} WPM | ${elapsed} / -${remaining}`
-      : `⏸ | ${elapsed} / -${remaining}`;
+      ? `▶ ${state.speedWpm} WPM | ${elapsed} / -${remaining} | ${connStatus}`
+      : `⏸ | ${elapsed} / -${remaining} | ${connStatus}`;
   }
 }
 
@@ -147,9 +155,10 @@ document.addEventListener("keydown", (e) => {
 function glassesStatusText(): string {
   const elapsed = formatTime(elapsedSeconds(state));
   const remaining = formatTime(remainingSeconds(state));
+  const connStatus = formatConnectionStatus(connectionInfo);
   return state.scrolling
-    ? `> ${state.speedWpm} WPM | ${elapsed} / -${remaining}`
-    : `|| ${state.speedWpm} WPM | ${elapsed} / -${remaining}`;
+    ? `> ${state.speedWpm} WPM | ${elapsed} / -${remaining} | ${connStatus}`
+    : `|| ${state.speedWpm} WPM | ${elapsed} / -${remaining} | ${connStatus}`;
 }
 
 function glassesContent(): string {
@@ -164,6 +173,21 @@ async function initGlasses() {
     } = await import("@evenrealities/even_hub_sdk");
 
     const bridge = await waitForEvenAppBridge();
+    connectionInfo = { state: "connected" };
+
+    // Listen for device status changes (battery, connection)
+    if (bridge.onDeviceStatusChanged) {
+      bridge.onDeviceStatusChanged((status: { batteryLevel?: number; connected?: boolean }) => {
+        if (status.connected === false) {
+          connectionInfo = { state: "disconnected" };
+        } else {
+          connectionInfo = {
+            state: "connected",
+            batteryLevel: status.batteryLevel,
+          };
+        }
+      });
+    }
 
     // Sync settings with glasses localStorage
     await initGlassesStorage(bridge);
