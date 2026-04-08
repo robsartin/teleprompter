@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseLine } from "../src/markdown";
+import { parseLine, isHeading } from "../src/markdown";
 import type { Token } from "../src/markdown";
 
 describe("parseLine", () => {
@@ -38,5 +38,27 @@ describe("parseLine", () => {
   it("returns empty array for empty string", () => {
     const tokens = parseLine("");
     expect(tokens).toEqual([]);
+  });
+});
+
+describe("isHeading", () => {
+  it("returns true for lines starting with '# '", () => {
+    expect(isHeading("# Introduction")).toBe(true);
+  });
+
+  it("returns false for plain text", () => {
+    expect(isHeading("hello world")).toBe(false);
+  });
+
+  it("returns false for lines with # not at start", () => {
+    expect(isHeading("not a # heading")).toBe(false);
+  });
+
+  it("returns false for # without space after", () => {
+    expect(isHeading("#nospace")).toBe(false);
+  });
+
+  it("returns false for empty string", () => {
+    expect(isHeading("")).toBe(false);
   });
 });

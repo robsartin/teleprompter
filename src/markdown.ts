@@ -41,3 +41,10 @@ export function parseLine(line: string): Token[] {
 
   return tokens;
 }
+
+/**
+ * Returns true if the line is a heading (starts with "# ").
+ */
+export function isHeading(line: string): boolean {
+  return line.startsWith("# ");
+}
