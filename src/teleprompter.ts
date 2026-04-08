@@ -207,6 +207,23 @@ export function wordCount(state: TeleprompterState): number {
 }
 
 /**
+ * Estimated total read time in seconds: wordCount / (speedWpm / 60).
+ */
+export function estimatedReadTime(state: TeleprompterState): number {
+  const words = wordCount(state);
+  if (words === 0) return 0;
+  return words / (state.speedWpm / 60);
+}
+
+/**
+ * Pixel offset for smooth sub-line scrolling in the browser simulator.
+ * Returns the fractional line progress scaled to the given line height in pixels.
+ */
+export function scrollPixelOffset(state: TeleprompterState, lineHeightPx: number): number {
+  return state._lineFrac * lineHeightPx;
+}
+
+/**
  * Whether the script has reached the last line.
  */
 export function isFinished(state: TeleprompterState): boolean {

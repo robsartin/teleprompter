@@ -20,6 +20,8 @@ import {
   startCountdown,
   countdownText,
   wordCount,
+  estimatedReadTime,
+  scrollPixelOffset,
 } from "../src/teleprompter";
 import type { AnnotatedLine } from "../src/teleprompter";
 
@@ -343,6 +345,49 @@ describe("wordCount", () => {
   it("handles extra whitespace", () => {
     const state = createState("  hello   world  ");
     expect(wordCount(state)).toBe(2);
+  });
+});
+
+describe("estimatedReadTime", () => {
+  it("calculates read time based on word count and speed", () => {
+    // 150 words at 150 WPM = 60 seconds
+    const words = Array.from({ length: 150 }, (_, i) => `word${i}`).join(" ");
+    const state = createState(words);
+    expect(estimatedReadTime(state)).toBe(60);
+  });
+
+  it("scales with speed", () => {
+    const words = Array.from({ length: 300 }, (_, i) => `word${i}`).join(" ");
+    const state = setSpeed(createState(words), 300);
+    // 300 words at 300 WPM = 60 seconds
+    expect(estimatedReadTime(state)).toBe(60);
+  });
+
+  it("returns 0 for empty text", () => {
+    const state = createState("");
+    expect(estimatedReadTime(state)).toBe(0);
+  });
+});
+
+describe("scrollPixelOffset", () => {
+  it("returns 0 when _lineFrac is 0", () => {
+    const state = createState("Hello");
+    expect(scrollPixelOffset(state, 38.4)).toBe(0);
+  });
+
+  it("returns half lineHeight when _lineFrac is 0.5", () => {
+    const state = { ...createState("Hello"), _lineFrac: 0.5 };
+    expect(scrollPixelOffset(state, 38.4)).toBeCloseTo(19.2, 5);
+  });
+
+  it("returns full lineHeight when _lineFrac is 1", () => {
+    const state = { ...createState("Hello"), _lineFrac: 1 };
+    expect(scrollPixelOffset(state, 38.4)).toBeCloseTo(38.4, 5);
+  });
+
+  it("scales with lineHeightPx", () => {
+    const state = { ...createState("Hello"), _lineFrac: 0.25 };
+    expect(scrollPixelOffset(state, 100)).toBe(25);
   });
 });
 
