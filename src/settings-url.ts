@@ -27,3 +27,7 @@ export function decodeSettingsFromParams(search: string): { speedWpm?: number; s
   }
   return result;
 }
+
+export function buildShareUrl(baseUrl: string, settings: { speedWpm: number; scriptUrl?: string }): string {
+  return baseUrl + encodeSettingsToParams(settings);
+}
