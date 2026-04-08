@@ -19,6 +19,7 @@ import {
   remainingSeconds,
   startCountdown,
   countdownText,
+  wordCount,
 } from "../src/teleprompter";
 import type { AnnotatedLine } from "../src/teleprompter";
 
@@ -320,6 +321,28 @@ describe("countdownText", () => {
 
   it("returns '1' when countdown is between 0 and 1", () => {
     expect(countdownText({ ...createState("Hello"), countdown: 0.5 })).toBe("1");
+  });
+});
+
+describe("wordCount", () => {
+  it("counts words in a simple script", () => {
+    const state = createState("hello world foo bar");
+    expect(wordCount(state)).toBe(4);
+  });
+
+  it("counts words across multiple lines", () => {
+    const state = createState("one two three\nfour five");
+    expect(wordCount(state)).toBe(5);
+  });
+
+  it("returns 0 for empty text", () => {
+    const state = createState("");
+    expect(wordCount(state)).toBe(0);
+  });
+
+  it("handles extra whitespace", () => {
+    const state = createState("  hello   world  ");
+    expect(wordCount(state)).toBe(2);
   });
 });
 
