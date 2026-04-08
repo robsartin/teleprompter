@@ -30,6 +30,8 @@ export interface TeleprompterState {
   elapsedTicks: number;
   /** Seconds remaining in countdown (0 means no countdown active). */
   countdown: number;
+  /** Cached word count — only changes when script is loaded. */
+  _wordCount: number;
 }
 
 /**
@@ -60,15 +62,23 @@ export function wrapText(text: string, width: number = CHARS_PER_LINE): string[]
   return result;
 }
 
+function countWords(lines: string[]): number {
+  const text = lines.join(" ").trim();
+  if (text.length === 0) return 0;
+  return text.split(/\s+/).length;
+}
+
 export function createState(text: string = SAMPLE_TEXT): TeleprompterState {
+  const lines = wrapText(text);
   return {
-    lines: wrapText(text),
+    lines,
     scrolling: false,
     speedWpm: 150,
     lineIndex: 0,
     _lineFrac: 0,
     elapsedTicks: 0,
     countdown: 0,
+    _wordCount: countWords(lines),
   };
 }
 
@@ -201,9 +211,7 @@ export function annotatedLines(state: TeleprompterState, count: number = 8): Ann
  * Total word count of the script.
  */
 export function wordCount(state: TeleprompterState): number {
-  const text = state.lines.join(" ").trim();
-  if (text.length === 0) return 0;
-  return text.split(/\s+/).length;
+  return state._wordCount;
 }
 
 /**
