@@ -19,6 +19,10 @@ import {
   remainingSeconds,
   startCountdown,
   countdownText,
+  wordCount,
+  estimatedReadTime,
+  readTimeText,
+  scrollPixelOffset,
 } from "../src/teleprompter";
 import type { AnnotatedLine } from "../src/teleprompter";
 
@@ -320,6 +324,91 @@ describe("countdownText", () => {
 
   it("returns '1' when countdown is between 0 and 1", () => {
     expect(countdownText({ ...createState("Hello"), countdown: 0.5 })).toBe("1");
+  });
+});
+
+describe("wordCount", () => {
+  it("counts words in a simple script", () => {
+    const state = createState("hello world foo bar");
+    expect(wordCount(state)).toBe(4);
+  });
+
+  it("counts words across multiple lines", () => {
+    const state = createState("one two three\nfour five");
+    expect(wordCount(state)).toBe(5);
+  });
+
+  it("returns 0 for empty text", () => {
+    const state = createState("");
+    expect(wordCount(state)).toBe(0);
+  });
+
+  it("handles extra whitespace", () => {
+    const state = createState("  hello   world  ");
+    expect(wordCount(state)).toBe(2);
+  });
+});
+
+describe("estimatedReadTime", () => {
+  it("calculates read time based on word count and speed", () => {
+    // 150 words at 150 WPM = 60 seconds
+    const words = Array.from({ length: 150 }, (_, i) => `word${i}`).join(" ");
+    const state = createState(words);
+    expect(estimatedReadTime(state)).toBe(60);
+  });
+
+  it("scales with speed", () => {
+    const words = Array.from({ length: 300 }, (_, i) => `word${i}`).join(" ");
+    const state = setSpeed(createState(words), 300);
+    // 300 words at 300 WPM = 60 seconds
+    expect(estimatedReadTime(state)).toBe(60);
+  });
+
+  it("returns 0 for empty text", () => {
+    const state = createState("");
+    expect(estimatedReadTime(state)).toBe(0);
+  });
+});
+
+describe("readTimeText", () => {
+  it("formats word count and estimated read time", () => {
+    // 150 words at 150 WPM = 60 seconds = 01:00
+    const words = Array.from({ length: 150 }, (_, i) => `word${i}`).join(" ");
+    const state = createState(words);
+    expect(readTimeText(state)).toBe("150 words | ~01:00");
+  });
+
+  it("handles short text", () => {
+    const state = createState("hello world");
+    // 2 words at 150 WPM = 0.8 seconds => 00:00
+    expect(readTimeText(state)).toBe("2 words | ~00:00");
+  });
+
+  it("handles empty text", () => {
+    const state = createState("");
+    expect(readTimeText(state)).toBe("0 words | ~00:00");
+  });
+});
+
+describe("scrollPixelOffset", () => {
+  it("returns 0 when _lineFrac is 0", () => {
+    const state = createState("Hello");
+    expect(scrollPixelOffset(state, 38.4)).toBe(0);
+  });
+
+  it("returns half lineHeight when _lineFrac is 0.5", () => {
+    const state = { ...createState("Hello"), _lineFrac: 0.5 };
+    expect(scrollPixelOffset(state, 38.4)).toBeCloseTo(19.2, 5);
+  });
+
+  it("returns full lineHeight when _lineFrac is 1", () => {
+    const state = { ...createState("Hello"), _lineFrac: 1 };
+    expect(scrollPixelOffset(state, 38.4)).toBeCloseTo(38.4, 5);
+  });
+
+  it("scales with lineHeightPx", () => {
+    const state = { ...createState("Hello"), _lineFrac: 0.25 };
+    expect(scrollPixelOffset(state, 100)).toBe(25);
   });
 });
 
