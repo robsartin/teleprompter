@@ -216,6 +216,15 @@ export function estimatedReadTime(state: TeleprompterState): number {
 }
 
 /**
+ * Format word count and estimated read time as "X words | ~MM:SS".
+ */
+export function readTimeText(state: TeleprompterState): string {
+  const words = wordCount(state);
+  const seconds = estimatedReadTime(state);
+  return `${words} words | ~${formatTime(seconds)}`;
+}
+
+/**
  * Pixel offset for smooth sub-line scrolling in the browser simulator.
  * Returns the fractional line progress scaled to the given line height in pixels.
  */

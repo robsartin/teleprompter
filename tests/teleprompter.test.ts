@@ -21,6 +21,7 @@ import {
   countdownText,
   wordCount,
   estimatedReadTime,
+  readTimeText,
   scrollPixelOffset,
 } from "../src/teleprompter";
 import type { AnnotatedLine } from "../src/teleprompter";
@@ -366,6 +367,26 @@ describe("estimatedReadTime", () => {
   it("returns 0 for empty text", () => {
     const state = createState("");
     expect(estimatedReadTime(state)).toBe(0);
+  });
+});
+
+describe("readTimeText", () => {
+  it("formats word count and estimated read time", () => {
+    // 150 words at 150 WPM = 60 seconds = 01:00
+    const words = Array.from({ length: 150 }, (_, i) => `word${i}`).join(" ");
+    const state = createState(words);
+    expect(readTimeText(state)).toBe("150 words | ~01:00");
+  });
+
+  it("handles short text", () => {
+    const state = createState("hello world");
+    // 2 words at 150 WPM = 0.8 seconds => 00:00
+    expect(readTimeText(state)).toBe("2 words | ~00:00");
+  });
+
+  it("handles empty text", () => {
+    const state = createState("");
+    expect(readTimeText(state)).toBe("0 words | ~00:00");
   });
 });
 
