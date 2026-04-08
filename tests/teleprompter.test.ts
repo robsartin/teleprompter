@@ -19,6 +19,7 @@ import {
   remainingSeconds,
   startCountdown,
   countdownText,
+  wordsInCurrentLine,
 } from "../src/teleprompter";
 import type { AnnotatedLine } from "../src/teleprompter";
 
@@ -340,5 +341,23 @@ describe("tick with countdown", () => {
     const result = tick(state);
     expect(result.countdown).toBe(0);
     expect(result.scrolling).toBe(true);
+  });
+});
+
+describe("wordsInCurrentLine", () => {
+  it("splits the current line into words", () => {
+    const state = createState("hello world foo\nbar baz");
+    expect(wordsInCurrentLine(state)).toEqual(["hello", "world", "foo"]);
+  });
+
+  it("returns words from the line at lineIndex", () => {
+    const state = { ...createState("hello world\nfoo bar baz"), lineIndex: 1, _lineFrac: 0 };
+    expect(wordsInCurrentLine(state)).toEqual(["foo", "bar", "baz"]);
+  });
+
+  it("returns empty array for an empty line", () => {
+    const state = createState("hello\n\nworld");
+    const s = { ...state, lineIndex: 1, _lineFrac: 0 };
+    expect(wordsInCurrentLine(s)).toEqual([]);
   });
 });

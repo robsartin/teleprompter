@@ -203,3 +203,12 @@ export function annotatedLines(state: TeleprompterState, count: number = 8): Ann
 export function isFinished(state: TeleprompterState): boolean {
   return state.lineIndex >= state.lines.length - 1;
 }
+
+/**
+ * Split the current line (at lineIndex) into words.
+ */
+export function wordsInCurrentLine(state: TeleprompterState): string[] {
+  const line = state.lines[state.lineIndex] ?? "";
+  if (line.trim() === "") return [];
+  return line.split(/\s+/);
+}
