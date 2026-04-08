@@ -21,7 +21,10 @@ import {
   DISPLAY_WIDTH,
   DISPLAY_HEIGHT,
   readTimeText,
+  scrollPixelOffset,
 } from "./teleprompter";
+
+const LINE_HEIGHT_PX = 24 * 1.6; // matches CSS font-size * line-height
 import { parseScriptUrl, isValidUrl } from "./loader";
 import {
   STORAGE_KEY,
@@ -102,8 +105,11 @@ function renderBrowser() {
     div.style.textAlign = "center";
     scriptEl.appendChild(div);
     statusEl.textContent = "⏳";
+    scriptEl.style.transform = "";
   } else {
     scriptEl.innerHTML = "";
+    const offset = scrollPixelOffset(state, LINE_HEIGHT_PX);
+    scriptEl.style.transform = `translateY(-${offset}px)`;
     for (const line of annotatedLines(state, 7)) {
       const div = document.createElement("div");
       div.textContent = line.text || "\u00A0";
