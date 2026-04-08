@@ -19,7 +19,7 @@ import {
   remainingSeconds,
   SAMPLE_TEXT,
   DISPLAY_WIDTH,
-  DISPLAY_HEIGHT,
+  DISPLAY_HEIGHT,\n  readTimeText,
 } from "./teleprompter";
 import { parseScriptUrl, isValidUrl } from "./loader";
 import {
