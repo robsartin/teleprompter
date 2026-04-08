@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { encodeSettingsToParams } from "../src/settings-url";
+import { encodeSettingsToParams, decodeSettingsFromParams } from "../src/settings-url";
 
 describe("encodeSettingsToParams", () => {
   it("encodes speed only", () => {
@@ -14,5 +14,34 @@ describe("encodeSettingsToParams", () => {
   it("omits script param when scriptUrl is undefined", () => {
     const result = encodeSettingsToParams({ speedWpm: 150 });
     expect(result).not.toContain("script");
+  });
+});
+
+describe("decodeSettingsFromParams", () => {
+  it("decodes speed from query string", () => {
+    expect(decodeSettingsFromParams("?speed=180")).toEqual({ speedWpm: 180 });
+  });
+
+  it("decodes speed and script URL", () => {
+    expect(decodeSettingsFromParams("?speed=200&script=https%3A%2F%2Fexample.com%2Fspeech.txt")).toEqual({
+      speedWpm: 200,
+      scriptUrl: "https://example.com/speech.txt",
+    });
+  });
+
+  it("returns empty object for no matching params", () => {
+    expect(decodeSettingsFromParams("?other=value")).toEqual({});
+  });
+
+  it("returns empty object for empty string", () => {
+    expect(decodeSettingsFromParams("")).toEqual({});
+  });
+
+  it("ignores non-numeric speed values", () => {
+    expect(decodeSettingsFromParams("?speed=abc")).toEqual({});
+  });
+
+  it("omits scriptUrl when script param is empty", () => {
+    expect(decodeSettingsFromParams("?speed=150&script=")).toEqual({ speedWpm: 150 });
   });
 });
