@@ -48,3 +48,20 @@ export function parseLine(line: string): Token[] {
 export function isHeading(line: string): boolean {
   return line.startsWith("# ");
 }
+
+/**
+ * Remove markdown syntax from a line, returning plain text.
+ * Strips heading prefix, bold, and italic markers.
+ */
+export function stripMarkdown(line: string): string {
+  let result = line;
+  // Strip heading prefix
+  if (result.startsWith("# ")) {
+    result = result.slice(2);
+  }
+  // Strip **bold** markers
+  result = result.replace(/\*\*(.+?)\*\*/g, "$1");
+  // Strip *italic* markers
+  result = result.replace(/\*(.+?)\*/g, "$1");
+  return result;
+}
