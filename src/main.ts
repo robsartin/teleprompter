@@ -1,9 +1,3 @@
-/**
- * Teleprompter app entry point.
- * Connects to Even Realities glasses via the Even Hub SDK.
- * Falls back to browser display when glasses are not available.
- */
-
 import {
   createState,
   toggleScrolling,
@@ -17,14 +11,13 @@ import {
   formatTime,
   elapsedSeconds,
   remainingSeconds,
+  readTimeText,
+  scrollPixelOffset,
   SAMPLE_TEXT,
   DISPLAY_WIDTH,
   DISPLAY_HEIGHT,
-  readTimeText,
-  scrollPixelOffset,
+  type TeleprompterState,
 } from "./teleprompter";
-
-const LINE_HEIGHT_PX = 24 * 1.6; // matches CSS font-size * line-height
 import { parseScriptUrl, isValidUrl } from "./loader";
 import {
   STORAGE_KEY,
@@ -34,6 +27,7 @@ import {
   mergeSettings,
   type Settings,
 } from "./storage";
+import { decodeSettingsFromParams, buildShareUrl } from "./settings-url";
 import { mapEventToAction } from "./gestures";
 import {
   DEFAULT_CONNECTION,
@@ -41,7 +35,8 @@ import {
   type ConnectionInfo,
 } from "./connection";
 
-// --- Load persisted settings ---
+const LINE_HEIGHT_PX = 24 * 1.6;
+
 function loadSettings(): Settings {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
@@ -55,42 +50,53 @@ function loadSettings(): Settings {
 function saveSettings(settings: Settings): void {
   try {
     window.localStorage.setItem(STORAGE_KEY, serializeSettings(settings));
-  } catch {
-    // localStorage may be unavailable — silently ignore
-  }
+  } catch {}
 }
 
-const initialSettings = loadSettings();
-let state = setSpeed(toggleScrolling(createState(SAMPLE_TEXT)), initialSettings.speedWpm);
-let connectionInfo: ConnectionInfo = DEFAULT_CONNECTION;
+function loadScript(text: string, speedWpm: number): TeleprompterState {
+  return setSpeed(toggleScrolling(createState(text)), speedWpm);
+}
 
-// --- Load script from URL param ---
+function adjustSpeed(delta: number): void {
+  state = setSpeed(state, state.speedWpm + delta);
+  saveSettings({ speedWpm: state.speedWpm });
+}
+
+function formatStatus(playIcon: string, pauseIcon: string): string {
+  const elapsed = formatTime(elapsedSeconds(state));
+  const remaining = formatTime(remainingSeconds(state));
+  const conn = formatConnectionStatus(connectionInfo);
+  return state.scrolling
+    ? `${playIcon} ${state.speedWpm} WPM | ${elapsed} / -${remaining} | ${conn}`
+    : `${pauseIcon} ${readTimeText(state)} | ${conn}`;
+}
+
+const urlSettings = decodeSettingsFromParams(window.location.search);
+const initialSettings = loadSettings();
+const effectiveSpeed = urlSettings.speedWpm ?? initialSettings.speedWpm;
+let state = loadScript(SAMPLE_TEXT, effectiveSpeed);
+let connectionInfo: ConnectionInfo = DEFAULT_CONNECTION;
+let prevState: TeleprompterState | null = null;
+
 async function loadScriptFromUrl() {
   const url = parseScriptUrl(window.location.search);
   if (url && isValidUrl(url)) {
     try {
       const response = await fetch(url);
       if (response.ok) {
-        const text = await response.text();
-        state = setSpeed(toggleScrolling(createState(text)), state.speedWpm);
+        state = loadScript(await response.text(), state.speedWpm);
       }
-    } catch {
-      // Fetch failed — keep default script
-    }
+    } catch {}
   }
 }
 
 loadScriptFromUrl();
 
-// --- Paste handler ---
 document.addEventListener("paste", (e) => {
   const text = e.clipboardData?.getData("text/plain");
-  if (text) {
-    state = setSpeed(createState(text), state.speedWpm);
-  }
+  if (text) state = setSpeed(createState(text), state.speedWpm);
 });
 
-// --- Browser fallback UI ---
 const scriptEl = document.getElementById("script-text")!;
 const statusEl = document.getElementById("status")!;
 
@@ -121,12 +127,7 @@ function renderBrowser() {
       }
       scriptEl.appendChild(div);
     }
-    const elapsed = formatTime(elapsedSeconds(state));
-    const remaining = formatTime(remainingSeconds(state));
-    const connStatus = formatConnectionStatus(connectionInfo);
-    statusEl.textContent = state.scrolling
-      ? `▶ ${state.speedWpm} WPM | ${elapsed} / -${remaining} | ${connStatus}`
-      : `⏸ | ${elapsed} / -${remaining} | ${connStatus}`;
+    statusEl.textContent = formatStatus("▶", "⏸");
   }
 }
 
@@ -145,120 +146,72 @@ document.addEventListener("keydown", (e) => {
       state = startCountdown(state);
     }
   }
-  if (e.code === "KeyR") {
-    state = restart(state);
-  }
-  if (e.code === "ArrowUp") {
-    state = setSpeed(state, state.speedWpm + 10);
-    saveSettings({ speedWpm: state.speedWpm });
-  }
-  if (e.code === "ArrowDown") {
-    state = setSpeed(state, state.speedWpm - 10);
-    saveSettings({ speedWpm: state.speedWpm });
+  if (e.code === "KeyR") state = restart(state);
+  if (e.code === "ArrowUp") adjustSpeed(10);
+  if (e.code === "ArrowDown") adjustSpeed(-10);
+  if (e.code === "KeyS") {
+    const url = buildShareUrl(window.location.origin + window.location.pathname, { speedWpm: state.speedWpm });
+    navigator.clipboard.writeText(url).catch(() => {});
   }
 });
 
-function glassesStatusText(): string {
-  const elapsed = formatTime(elapsedSeconds(state));
-  const remaining = formatTime(remainingSeconds(state));
-  const connStatus = formatConnectionStatus(connectionInfo);
-  return state.scrolling
-    ? `> ${state.speedWpm} WPM | ${elapsed} / -${remaining} | ${connStatus}`
-    : `|| ${state.speedWpm} WPM | ${elapsed} / -${remaining} | ${connStatus}`;
-}
-
 function glassesContent(): string {
-  return visibleText(state) + "\n\n" + glassesStatusText();
+  return visibleText(state) + "\n\n" + formatStatus(">", "||");
 }
 
-// --- Even Hub glasses UI ---
 async function initGlasses() {
   try {
-    const {
-      waitForEvenAppBridge,
-    } = await import("@evenrealities/even_hub_sdk");
-
+    const { waitForEvenAppBridge } = await import("@evenrealities/even_hub_sdk");
     const bridge = await waitForEvenAppBridge();
     connectionInfo = { state: "connected" };
 
-    // Listen for device status changes (battery, connection)
     if (bridge.onDeviceStatusChanged) {
       bridge.onDeviceStatusChanged((status: { batteryLevel?: number; connected?: boolean }) => {
-        if (status.connected === false) {
-          connectionInfo = { state: "disconnected" };
-        } else {
-          connectionInfo = {
-            state: "connected",
-            batteryLevel: status.batteryLevel,
-          };
-        }
+        connectionInfo = status.connected === false
+          ? { state: "disconnected" }
+          : { state: "connected", batteryLevel: status.batteryLevel };
       });
     }
 
-    // Sync settings with glasses localStorage
     await initGlassesStorage(bridge);
 
-    // Create a single text container — append status to script text
     const result = await bridge.createStartUpPageContainer({
       containerTotalNum: 1,
-      textObject: [
-        {
-          xPosition: 0,
-          yPosition: 0,
-          width: DISPLAY_WIDTH,
-          height: DISPLAY_HEIGHT,
-          containerID: 1,
-          containerName: "prompt",
-          content: glassesContent(),
-          isEventCapture: 1,
-        },
-      ],
+      textObject: [{
+        xPosition: 0, yPosition: 0,
+        width: DISPLAY_WIDTH, height: DISPLAY_HEIGHT,
+        containerID: 1, containerName: "prompt",
+        content: glassesContent(), isEventCapture: 1,
+      }],
     });
 
-    if (result !== 0) {
-      console.error("Failed to create glasses container:", result);
-      return;
-    }
+    if (result !== 0) return;
 
-    // Listen for tap/gesture events on the glasses
     bridge.onEvenHubEvent((event) => {
       const action = mapEventToAction(event);
-      switch (action) {
-        case "toggle":
-          state = toggleScrolling(state);
-          break;
-        case "restart":
-          state = restart(state);
-          break;
-        case "speed_up":
-          state = setSpeed(state, state.speedWpm + 10);
-          saveSettings({ speedWpm: state.speedWpm });
-          break;
-        case "speed_down":
-          state = setSpeed(state, state.speedWpm - 10);
-          saveSettings({ speedWpm: state.speedWpm });
-          break;
-      }
+      if (action === "toggle") state = toggleScrolling(state);
+      else if (action === "restart") state = restart(state);
+      else if (action === "speed_up") adjustSpeed(10);
+      else if (action === "speed_down") adjustSpeed(-10);
     });
 
-    // Update glasses text on each tick
+    let lastGlassesContent = "";
     setInterval(async () => {
       const content = glassesContent();
+      if (content === lastGlassesContent) return;
+      lastGlassesContent = content;
       await bridge.textContainerUpgrade({
-        containerID: 1,
-        containerName: "prompt",
-        contentOffset: 0,
-        contentLength: content.length,
-        content,
+        containerID: 1, containerName: "prompt",
+        contentOffset: 0, contentLength: content.length, content,
       });
     }, 500);
-  } catch {
-    // Not running in Even App — browser-only mode
-  }
+  } catch {}
 }
 
-// --- Even Hub glasses localStorage sync ---
-async function initGlassesStorage(bridge: { getLocalStorage?: (key: string) => Promise<string | null>; setLocalStorage?: (key: string, value: string) => Promise<void> }): Promise<void> {
+async function initGlassesStorage(bridge: {
+  getLocalStorage?: (key: string) => Promise<string | null>;
+  setLocalStorage?: (key: string, value: string) => Promise<void>;
+}): Promise<void> {
   try {
     if (bridge.getLocalStorage) {
       const raw = await bridge.getLocalStorage(STORAGE_KEY);
@@ -267,21 +220,21 @@ async function initGlassesStorage(bridge: { getLocalStorage?: (key: string) => P
         state = setSpeed(state, saved.speedWpm);
       }
     }
-    // Save current settings to glasses storage
     if (bridge.setLocalStorage) {
       await bridge.setLocalStorage(STORAGE_KEY, serializeSettings({ speedWpm: state.speedWpm }));
     }
-  } catch {
-    // glasses storage unavailable — silently ignore
-  }
+  } catch {}
 }
 
-// --- Main loop ---
 function loop() {
-  state = tickState(state);
-  renderBrowser();
+  const newState = tickState(state);
+  if (newState !== state) {
+    state = newState;
+    renderBrowser();
+  }
   requestAnimationFrame(loop);
 }
 
 initGlasses();
+renderBrowser();
 requestAnimationFrame(loop);
