@@ -20,6 +20,7 @@ import {
   startCountdown,
   countdownText,
   wordsInCurrentLine,
+  currentWordIndex,
 } from "../src/teleprompter";
 import type { AnnotatedLine } from "../src/teleprompter";
 
@@ -359,5 +360,36 @@ describe("wordsInCurrentLine", () => {
     const state = createState("hello\n\nworld");
     const s = { ...state, lineIndex: 1, _lineFrac: 0 };
     expect(wordsInCurrentLine(s)).toEqual([]);
+  });
+});
+
+describe("currentWordIndex", () => {
+  it("returns 0 when _lineFrac is 0", () => {
+    const state = createState("hello world foo bar");
+    expect(currentWordIndex(state)).toBe(0);
+  });
+
+  it("returns last word index when _lineFrac is near 1", () => {
+    const state = { ...createState("hello world foo bar"), _lineFrac: 0.99 };
+    // 4 words, floor(0.99 * 4) = 3
+    expect(currentWordIndex(state)).toBe(3);
+  });
+
+  it("returns middle word for mid-line frac", () => {
+    const state = { ...createState("one two three four"), _lineFrac: 0.5 };
+    // 4 words, floor(0.5 * 4) = 2
+    expect(currentWordIndex(state)).toBe(2);
+  });
+
+  it("returns 0 for an empty line", () => {
+    const state = createState("hello\n\nworld");
+    const s = { ...state, lineIndex: 1, _lineFrac: 0.5 };
+    expect(currentWordIndex(s)).toBe(0);
+  });
+
+  it("clamps to last word index when _lineFrac >= 1", () => {
+    const state = { ...createState("one two three"), _lineFrac: 1.0 };
+    // 3 words, should clamp to 2
+    expect(currentWordIndex(state)).toBe(2);
   });
 });
